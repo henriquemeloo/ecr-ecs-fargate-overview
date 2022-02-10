@@ -31,7 +31,7 @@ resource "aws_ecs_task_definition" "task" {
   container_definitions = jsonencode(
     [
       {
-        name  = local.resources_common_name
+        name  = "${local.resources_common_name}-task"
         image = "${local.account_id}.dkr.ecr.${var.region}.amazonaws.com/${local.resources_common_name}-task:latest"
         logConfiguration = {
           logDriver = "awslogs"
@@ -57,7 +57,7 @@ resource "aws_ecs_task_definition" "server" {
   container_definitions = jsonencode(
     [
       {
-        name  = local.resources_common_name
+        name  = "${local.resources_common_name}-server"
         image = "${local.account_id}.dkr.ecr.${var.region}.amazonaws.com/${local.resources_common_name}-server:latest"
         logConfiguration = {
           logDriver = "awslogs"
@@ -67,6 +67,13 @@ resource "aws_ecs_task_definition" "server" {
             awslogs-stream-prefix = "server"
           }
         }
+        essential = true
+        portMappings = [
+          {
+            containerPort = 80
+            hostPort      = 80
+          }
+        ]
       }
     ]
   )
@@ -77,6 +84,89 @@ resource "aws_ecs_task_definition" "server" {
   execution_role_arn       = aws_iam_role.tasks_execution_role.arn
 }
 
+
+resource "aws_lb_target_group" "lb_target_group" {
+  name        = "albtg-${local.env_suffix}"
+  target_type = "ip"
+  port        = 80
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.main.id
+  health_check {
+    path = "/health"
+  }
+}
+resource "aws_security_group" "web_inbound_sg" {
+  name        = "albsg-${local.env_suffix}"
+  description = "Allow HTTP from Anywhere into ALB"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 8
+    to_port     = 0
+    protocol    = "icmp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${local.resources_common_name}-inbound-sg"
+  }
+}
+
+resource "aws_alb" "alb" {
+  name            = local.resources_common_name
+  subnets         = [aws_subnet.main.id, aws_subnet.extra.id]
+  security_groups = [aws_security_group.web_inbound_sg.id]
+  tags = {
+    Name        = "${local.resources_common_name}-alb"
+  }
+}
+resource "aws_alb_listener" "lb_listener" {
+  load_balancer_arn = aws_alb.alb.arn
+  port              = "80"
+  protocol          = "HTTP"
+  depends_on        = [aws_lb_target_group.lb_target_group]
+  default_action {
+    target_group_arn = aws_lb_target_group.lb_target_group.arn
+    type             = "forward"
+  }
+}
+resource "aws_security_group" "ecs_service" {
+  vpc_id      = aws_vpc.main.id
+  name        = "${local.resources_common_name}-ecs-service-sg"
+  description = "Allow egress from container"
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 8
+    to_port     = 0
+    protocol    = "icmp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${local.resources_common_name}-ecs-service-sg"
+  }
+}
 # Create service definition for the server
 resource "aws_ecs_service" "server" {
   name            = "${local.resources_common_name}-server"
@@ -85,9 +175,16 @@ resource "aws_ecs_service" "server" {
   desired_count   = 1
   launch_type     = "FARGATE"
   network_configuration {
-    subnets = [aws_subnet.main.id]
-    assign_public_ip = true
+    subnets = [aws_subnet.main.id, aws_subnet.extra.id]
+    security_groups = [aws_security_group.ecs_service.id]
+    # assign_public_ip = true
   }
+  load_balancer {
+    target_group_arn = aws_lb_target_group.lb_target_group.arn
+    container_name = "${local.resources_common_name}-server"
+    container_port = 80
+  }
+  depends_on = [aws_alb.alb]
 }
 
 # # Create an IAM role for our service to assume

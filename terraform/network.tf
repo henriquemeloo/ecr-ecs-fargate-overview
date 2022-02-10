@@ -17,6 +17,15 @@ resource "aws_subnet" "main" {
   tags = {
     Name = local.resources_common_name
   }
+  availability_zone = "us-east-1a"
+}
+resource "aws_subnet" "extra" {
+  vpc_id     = aws_vpc.main.id
+  cidr_block = "10.0.2.0/24"
+  tags = {
+    Name = "${local.resources_common_name}-extra"
+  }
+  availability_zone = "us-east-1b"
 }
 # Create a route table and associate it to the subnet
 resource "aws_route_table" "main" {
