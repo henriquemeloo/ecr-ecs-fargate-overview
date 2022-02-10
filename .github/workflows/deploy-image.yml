@@ -4,7 +4,7 @@ name: Deploy to ECR
 on:
   push:
     branches:
-      - testdeploy
+      - develop
 
 
 jobs:
@@ -12,38 +12,31 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
 
-      - name: Extract branch name
-        shell: bash
-        run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
-        id: extract_branch
-
-      - name: test
+      - name: Set env variables
         run: |
-          echo "secret: ${{ secrets[AWS_ACCOUNT_ID_${{ steps.extract_branch.outputs.branch }}] }}"
+          echo "REPOSITORY_URL_TASK=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com/ecr-ecs-fargate-overview-develop-task" >> $GITHUB_ENV
+          echo "REPOSITORY_URL_SERVER=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com/ecr-ecs-fargate-overview-develop-server" >> $GITHUB_ENV
 
+      - uses: actions/checkout@v2
 
-      # - name: Set env variables
-      #   run: |
-      #     echo "REPOSITORY_URL=${{ secrets.AWS_ACCOUNT_ID_${{ steps.extract_branch.outputs.branch }} }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com/ecs-tasks-tutorial" >> $GITHUB_ENV
+      - name: Build images
+        run: |
+          docker build -t $REPOSITORY_URL_TASK:latest ./task
+          docker build -t $REPOSITORY_URL_SERVER:latest ./server
 
-      # - uses: actions/checkout@v2
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
 
-      # - name: Build image
-      #   run: |
-      #     docker build -t $REPOSITORY_URL:latest ./app
+      - name: Get login password
+        run: |
+          aws ecr get-login-password \
+          | docker login --username AWS --password-stdin $REPOSITORY_URL
 
-      # - name: Configure AWS credentials
-      #   uses: aws-actions/configure-aws-credentials@v1
-      #   with:
-      #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      #     aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
-
-      # - name: Get login password
-      #   run: |
-      #     aws ecr get-login-password \
-      #     | docker login --username AWS --password-stdin $REPOSITORY_URL
-
-      # - name: Push image
-      #   run: |
-      #     docker push $REPOSITORY_URL:latest
+      - name: Push image
+        run: |
+          docker push $REPOSITORY_URL_TASK:latest
+          docker push $REPOSITORY_URL_SERVER:latest
