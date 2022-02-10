@@ -8,17 +8,17 @@ app = Flask(__name__)
 
 @app.route("/health")
 def health():
-    return 200, "I'm alive"
+    return ("I'm alive", 200)
 
 
 @app.route("/run")
 def run():
-    return str(uuid.uuid4())
+    return (str(uuid.uuid4()), 200)
 
 @app.route("/status")
 def status():
     id_ = request.args.get("id")
-    return f"running {id_}"
+    return (f"running {id_}", 200)
 
 
 if __name__ == "__main__":
