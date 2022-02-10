@@ -19,7 +19,7 @@ jobs:
 
       - name: test
         run: |
-          echo "secret: ${{ secrets.AWS_ACCOUNT_ID_${{ steps.extract_branch.outputs.branch }} }}"
+          echo "secret: ${{ secrets[AWS_ACCOUNT_ID_${{ steps.extract_branch.outputs.branch }}] }}"
 
 
       # - name: Set env variables
