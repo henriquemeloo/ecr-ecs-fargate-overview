@@ -73,6 +73,13 @@ resource "aws_ecs_task_definition" "server" {
             containerPort = 80
             hostPort      = 80
           }
+        ],
+        environment = [
+          {
+            "CLUSTER_NAME" = aws_ecs_cluster.ecs_cluster.name,
+            "TASK_ID" = aws_ecs_task_definition.task.id,
+            "SUBNET_ID" = aws_subnet.main.id
+          }
         ]
       }
     ]
@@ -100,17 +107,17 @@ resource "aws_security_group" "web_inbound_sg" {
   description = "Allow HTTP from Anywhere into ALB"
   vpc_id      = aws_vpc.main.id
 
-  ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+  # ingress {
+  #   from_port   = 80
+  #   to_port     = 80
+  #   protocol    = "tcp"
+  #   cidr_blocks = ["0.0.0.0/0"]
+  # }
 
   ingress {
-    from_port   = 8
+    from_port   = 0
     to_port     = 0
-    protocol    = "icmp"
+    protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
@@ -157,9 +164,9 @@ resource "aws_security_group" "ecs_service" {
   }
 
   ingress {
-    from_port   = 8
+    from_port   = 0
     to_port     = 0
-    protocol    = "icmp"
+    protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
