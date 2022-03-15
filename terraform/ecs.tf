@@ -3,7 +3,7 @@ resource "aws_ecs_cluster" "ecs_cluster" {
   name = local.resources_common_name
 }
 
-# Create an IAM role for task execution to assume
+# Create an IAM execution role for task execution to assume
 resource "aws_iam_role" "tasks_execution_role" {
   name = "${local.resources_common_name}-execution_role"
   assume_role_policy = jsonencode({
@@ -100,6 +100,7 @@ resource "aws_ecs_task_definition" "server" {
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
   execution_role_arn       = aws_iam_role.tasks_execution_role.arn
+  task_role_arn = aws_iam_role.server.arn
 }
 
 
@@ -117,13 +118,6 @@ resource "aws_security_group" "web_inbound_sg" {
   name        = "albsg-${local.env_suffix}"
   description = "Allow HTTP from Anywhere into ALB"
   vpc_id      = aws_vpc.main.id
-
-  # ingress {
-  #   from_port   = 80
-  #   to_port     = 80
-  #   protocol    = "tcp"
-  #   cidr_blocks = ["0.0.0.0/0"]
-  # }
 
   ingress {
     from_port   = 0
@@ -205,73 +199,68 @@ resource "aws_ecs_service" "server" {
   depends_on = [aws_alb.alb]
 }
 
-# # Create an IAM role for our service to assume
-# resource "aws_iam_role" "airflow_server" {
-#   name                 = "ecs-tasks-tutorial-airflow_server"
-#   description          = "ecs-tasks-tutorial IAM role for Airflow server"
-#   max_session_duration = 3600
-#   assume_role_policy = jsonencode(
-#     {
-#       Statement = [
-#         {
-#           Action = "sts:AssumeRole"
-#           Effect = "Allow"
-#           Principal = {
-#             Service = "ec2.amazonaws.com"
-#           }
-#         },
-#       ]
-#       Version = "2012-10-17"
-#     }
-#   )
-#   inline_policy {
-#     name = "ecs-tasks-tutorial-airflow_server"
-#     policy = jsonencode({
-#       Version = "2012-10-17"
-#       Statement = [
-#         {
-#           Effect = "Allow"
-#           Condition = {
-#             ArnEquals = {
-#               "ecs:cluster" : aws_ecs_cluster.ecs_cluster.arn
-#             }
-#           }
-#           Action = [
-#             "ecs:RunTask"
-#           ]
-#           Resource = [
-#             "arn:aws:ecs:${var.region}:${local.account_id}:task-definition/ecs-tasks-tutorial:*",
-#             "arn:aws:ecs:${var.region}:${local.account_id}:task-definition/ecs-tasks-tutorial"
-#           ]
-#         },
-#         {
-#           Effect = "Allow"
-#           Action = [
-#             "ecs:DescribeTasks"
-#           ]
-#           Resource = [
-#             "arn:aws:ecs:${var.region}:${local.account_id}:task/ecs-tasks-tutorial/*"
-#           ]
-#         },
-#         {
-#           Effect = "Allow"
-#           Action = [
-#             "logs:GetLogEvents"
-#           ]
-#           Resource = [
-#             "${aws_cloudwatch_log_group.ecs_tasks_log_group.arn}:*"
-#           ]
-#         },
-#         {
-#           Effect = "Allow"
-#           Action = [
-#             "iam:PassRole"
-#           ]
-#           Resource = [
-#             aws_iam_role.tasks_execution_role.arn
-#           ]
-#         }
-#       ]
-#     })
-#   }
-# }
+# Create an IAM role for our service to assume
+resource "aws_iam_role" "server" {
+  name                 = "${local.resources_common_name}-server"
+  description          = "${local.resources_common_name} role for server"
+  max_session_duration = 3600
+  assume_role_policy = jsonencode(
+    {
+      Statement = [
+        {
+          Action = "sts:AssumeRole"
+          Effect = "Allow"
+          Principal = {
+            Service = "ecs-tasks.amazonaws.com"
+          }
+        },
+      ]
+      Version = "2012-10-17"
+    }
+  )
+  inline_policy {
+    name = "ecs-tasks-tutorial-airflow_server"
+    policy = jsonencode({
+      Version = "2012-10-17"
+      Statement = [
+        {
+          Effect = "Allow"
+          Condition = {
+            ArnEquals = {
+              "ecs:cluster" : aws_ecs_cluster.ecs_cluster.arn
+            }
+          }
+          Action = [
+            "ecs:RunTask"
+          ]
+          Resource = [
+            "arn:aws:ecs:${var.region}:${local.account_id}:task-definition/${aws_ecs_task_definition.task.family}"
+          ]
+        },
+        {
+          Effect = "Allow"
+          Action = [
+            "ecs:DescribeTasks"
+          ]
+          Condition = {
+            ArnEquals = {
+              "ecs:cluster" : aws_ecs_cluster.ecs_cluster.arn
+            }
+          }
+          Resource = [
+            "arn:aws:ecs:${var.region}:${local.account_id}:task/${aws_ecs_cluster.ecs_cluster.name}/*"
+          ]
+        },
+        {
+          Effect = "Allow"
+          Action = [
+            "iam:PassRole"
+          ]
+          Resource = [
+            aws_iam_role.tasks_execution_role.arn
+          ]
+        }
+      ]
+    })
+  }
+}
