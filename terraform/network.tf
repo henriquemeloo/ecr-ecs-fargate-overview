@@ -27,7 +27,7 @@ resource "aws_subnet" "extra" {
   }
   availability_zone = "us-east-1b"
 }
-# Create a route table and associate it to the subnet
+# Create a route table and associate it to the subnets
 resource "aws_route_table" "main" {
   vpc_id = aws_vpc.main.id
   route {
@@ -40,5 +40,9 @@ resource "aws_route_table" "main" {
 }
 resource "aws_route_table_association" "main" {
   subnet_id      = aws_subnet.main.id
+  route_table_id = aws_route_table.main.id
+}
+resource "aws_route_table_association" "extra" {
+  subnet_id      = aws_subnet.extra.id
   route_table_id = aws_route_table.main.id
 }
