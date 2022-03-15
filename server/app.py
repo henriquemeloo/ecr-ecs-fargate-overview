@@ -25,7 +25,8 @@ def run():
         taskDefinition=os.environ.get("TASK_NAME"),
         networkConfiguration={
             "awsvpcConfiguration":{
-                "subnets": [os.environ.get("SUBNET_ID")]
+                "subnets": [os.environ.get("SUBNET_ID")],
+                "assignPublicIp": "ENABLED"
             }
         },
         launchType="FARGATE"
