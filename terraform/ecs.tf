@@ -77,7 +77,7 @@ resource "aws_ecs_task_definition" "server" {
         environment = [
           {
             "name" = "AWS_DEFAULT_REGION",
-            "value" = variable.region
+            "value" = var.region
           },
           {
             "name" = "CLUSTER_NAME",
