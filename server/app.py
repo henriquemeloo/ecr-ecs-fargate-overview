@@ -7,6 +7,11 @@ import boto3
 app = Flask(__name__)
 
 
+@app.route("/")
+def home():
+    return ("<h1>ecr-ecs-fargate-overview</h1>", 200)
+
+
 @app.route("/health")
 def health():
     return ("I'm alive", 200)
@@ -14,7 +19,7 @@ def health():
 
 @app.route("/run")
 def run():
-    ecs = boto3.Client("ecs")
+    ecs = boto3.client("ecs")
     response = ecs.run_task(
         cluster=os.environ.get("CLUSTER_NAME"),
         taskDefinition=os.environ.get("TASK_NAME"),
@@ -30,7 +35,7 @@ def run():
 
 @app.route("/status")
 def status():
-    ecs = boto3.Client("ecs")
+    ecs = boto3.client("ecs")
     task_description = ecs.describe_tasks(
         cluster=os.environ.get("CLUSTER_NAME"),
         tasks=[request.args.get("id")]
