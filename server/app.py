@@ -6,12 +6,10 @@ import boto3
 
 app = Flask(__name__)
 
-env = os.environ.get("STACK_ENV")
-
 
 @app.route("/health")
 def health():
-    return (f"I'm alive, running env {env}", 200)
+    return ("I'm alive", 200)
 
 
 @app.route("/run")
@@ -27,13 +25,18 @@ def run():
         },
         launchType="FARGATE"
     )
-    return (response["tasks"]["attachments"]["id"], 200)
+    return (response["tasks"][0]["taskArn"].split(":task/")[-1], 200)
 
 
 @app.route("/status")
 def status():
-    id_ = request.args.get("id")
-    return (f"running {id_}", 200)
+    ecs = boto3.Client("ecs")
+    task_description = ecs.describe_tasks(
+        cluster=os.environ.get("CLUSTER_NAME"),
+        tasks=[request.args.get("id")]
+    )
+    task_status = task_description["tasks"][0]["lastStatus"]
+    return (task_status, 200)
 
 
 if __name__ == "__main__":

@@ -1,7 +1,11 @@
-import argparse
+import time
+
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("id")
-    args = parser.parse_args()
-    print(args.id)
+    print("Doing a lot of work...")
+    time.sleep(10)
+    print("omg so tired...")
+    time.sleep(20)
+    print("almost done...")
+    time.sleep(5)
+    print("Done!")
