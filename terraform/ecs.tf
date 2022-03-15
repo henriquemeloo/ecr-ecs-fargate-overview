@@ -76,9 +76,20 @@ resource "aws_ecs_task_definition" "server" {
         ],
         environment = [
           {
-            "CLUSTER_NAME" = aws_ecs_cluster.ecs_cluster.name,
-            "TASK_ID" = aws_ecs_task_definition.task.id,
-            "SUBNET_ID" = aws_subnet.main.id
+            "name" = "AWS_DEFAULT_REGION",
+            "value" = variable.region
+          },
+          {
+            "name" = "CLUSTER_NAME",
+            "value" = aws_ecs_cluster.ecs_cluster.name
+          },
+          {
+            "name" = "TASK_NAME",
+            "value" = aws_ecs_task_definition.task.family
+          },
+          {
+            "name" = "SUBNET_ID",
+            "value" = aws_subnet.main.id
           }
         ]
       }
