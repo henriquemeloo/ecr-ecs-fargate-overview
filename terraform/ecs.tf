@@ -184,7 +184,7 @@ resource "aws_ecs_service" "server" {
   name            = "${local.resources_common_name}-server"
   cluster         = aws_ecs_cluster.ecs_cluster.name
   task_definition = aws_ecs_task_definition.server.arn
-  desired_count   = 1
+  desired_count   = 2
   launch_type     = "FARGATE"
   network_configuration {
     subnets = [aws_subnet.main.id, aws_subnet.extra.id]
