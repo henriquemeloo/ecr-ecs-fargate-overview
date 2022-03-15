@@ -1,6 +1,6 @@
 FROM python:3.9-slim
 
-RUN pip install flask==2.0.2
+RUN pip install flask==2.0.2 boto3==1.15.18
 
 COPY app.py .
 
