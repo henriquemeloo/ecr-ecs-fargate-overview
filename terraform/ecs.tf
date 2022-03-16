@@ -76,19 +76,19 @@ resource "aws_ecs_task_definition" "server" {
         ],
         environment = [
           {
-            "name" = "AWS_DEFAULT_REGION",
+            "name"  = "AWS_DEFAULT_REGION",
             "value" = var.region
           },
           {
-            "name" = "CLUSTER_NAME",
+            "name"  = "CLUSTER_NAME",
             "value" = aws_ecs_cluster.ecs_cluster.name
           },
           {
-            "name" = "TASK_NAME",
+            "name"  = "TASK_NAME",
             "value" = aws_ecs_task_definition.task.family
           },
           {
-            "name" = "SUBNET_ID",
+            "name"  = "SUBNET_ID",
             "value" = aws_subnet.main.id
           }
         ]
@@ -100,7 +100,7 @@ resource "aws_ecs_task_definition" "server" {
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
   execution_role_arn       = aws_iam_role.tasks_execution_role.arn
-  task_role_arn = aws_iam_role.server.arn
+  task_role_arn            = aws_iam_role.server.arn
 }
 
 
@@ -143,7 +143,7 @@ resource "aws_alb" "alb" {
   subnets         = [aws_subnet.main.id, aws_subnet.extra.id]
   security_groups = [aws_security_group.web_inbound_sg.id]
   tags = {
-    Name        = "${local.resources_common_name}-alb"
+    Name = "${local.resources_common_name}-alb"
   }
 }
 resource "aws_alb_listener" "lb_listener" {
@@ -187,14 +187,14 @@ resource "aws_ecs_service" "server" {
   desired_count   = 2
   launch_type     = "FARGATE"
   network_configuration {
-    subnets = [aws_subnet.main.id, aws_subnet.extra.id]
-    security_groups = [aws_security_group.ecs_service.id]
+    subnets          = [aws_subnet.main.id, aws_subnet.extra.id]
+    security_groups  = [aws_security_group.ecs_service.id]
     assign_public_ip = true
   }
   load_balancer {
     target_group_arn = aws_lb_target_group.lb_target_group.arn
-    container_name = "${local.resources_common_name}-server"
-    container_port = 80
+    container_name   = "${local.resources_common_name}-server"
+    container_port   = 80
   }
   depends_on = [aws_alb.alb]
 }
